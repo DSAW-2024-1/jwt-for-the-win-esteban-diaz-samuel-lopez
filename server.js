@@ -10,9 +10,7 @@ const morgan = require("morgan");
 
 const PORT = process.env.PORT || 4000;
 
-const listUserAdmin = [
-  { email: "admin@admin.com", password: bcrypt.hashSync("admin", saltRounds) },
-];
+const listUserAdmin = [{ email: "admin@admin.com", password: "admin" }];
 
 const listUsers = [
   {
@@ -26,6 +24,66 @@ const listUsers = [
     lastName: "perez",
     email: "admin@admin.com",
     dateOfBirth: "2005-08-07",
+  },
+  {
+    username: "Alice",
+    lastName: "Smith",
+    email: "alice.smith@example.com",
+    dateOfBirth: "1988-02-10",
+  },
+  {
+    username: "Bob",
+    lastName: "Johnson",
+    email: "bob.johnson@example.com",
+    dateOfBirth: "1975-11-20",
+  },
+  {
+    username: "Emily",
+    lastName: "Brown",
+    email: "emily.brown@example.com",
+    dateOfBirth: "1995-07-03",
+  },
+  {
+    username: "Michael",
+    lastName: "Davis",
+    email: "michael.davis@example.com",
+    dateOfBirth: "1980-09-28",
+  },
+  {
+    username: "Emma",
+    lastName: "Wilson",
+    email: "emma.wilson@example.com",
+    dateOfBirth: "1993-04-15",
+  },
+  {
+    username: "David",
+    lastName: "Martinez",
+    email: "david.martinez@example.com",
+    dateOfBirth: "1973-06-22",
+  },
+  {
+    username: "Olivia",
+    lastName: "Taylor",
+    email: "olivia.taylor@example.com",
+    dateOfBirth: "1987-12-05",
+  },
+  {
+    username: "James",
+    lastName: "Anderson",
+    email: "james.anderson@example.com",
+    dateOfBirth: "1998-08-14",
+  },
+  {
+    username: "Sophia",
+    lastName: "Thomas",
+    email: "sophia.thomas@example.com",
+    dateOfBirth: "1982-03-25",
+  },
+  {
+    username: "William",
+    lastName: "White",
+    email: "william.white@example.com",
+    dateOfBirth: "1991-10-17",
   },
 ];
 
@@ -83,9 +141,11 @@ app.delete("/logout", (req, res) => {
   res.sendStatus(204);
 });
 
-app.post("/login", async (req, res) => {
+app.post("/login", (req, res) => {
   const { email, password } = req.body;
-  const user = listUserAdmin.find((user) => user.email === email);
+  const user = listUserAdmin.find(
+    (user) => user.email === email && user.password === password
+  );
 
   if (!user) {
     return res
@@ -94,26 +154,20 @@ app.post("/login", async (req, res) => {
   }
 
   try {
-    if (await bcrypt.compare(password, user.password)) {
-      const accessToken = generateAccessToken({ email: user.email });
-      const refreshToken = jwt.sign(
-        { email: user.email },
-        process.env.REFRESH_TOKEN_SECRET
-      );
-      refreshTokens.push(refreshToken);
-      res.cookie("session", refreshToken, {
-        httpOnly: true,
-        secure: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      }); // Cookie de sesión con tiempo de vida de una semana
-      res.json({ accessToken: accessToken, refreshToken: refreshToken });
-    } else {
-      res
-        .status(401)
-        .json({ message: "Correo electrónico o contraseña incorrectos" });
-    }
+    const accessToken = generateAccessToken({ email: user.email });
+    const refreshToken = jwt.sign(
+      { email: user.email },
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    refreshTokens.push(refreshToken);
+    res.cookie("session", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    }); // Cookie de sesión con tiempo de vida de una semana
+    res.json({ accessToken: accessToken, refreshToken: refreshToken });
   } catch (error) {
-    console.error("Error al comparar contraseñas:", error);
+    console.error("Error al generar tokens:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
 });
