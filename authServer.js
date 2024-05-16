@@ -1,24 +1,24 @@
 require("dotenv").config();
 
-const listUserAdmin = require("./server");
 const express = require("express");
-const server = express();
+const app = express();
 const bcrypt = require("bcrypt");
+const saltRounds = 10;
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const morgan = require("morgan");
 
-server.use(express.json());
-server.use(cors());
-server.use(morgan("dev"));
+app.use(express.json());
+app.use(cors());
+app.use(morgan("dev"));
 
-server.get("/", (req, res) => {
-  res.send("chao");
+app.get("/", (req, res) => {
+  res.send("Hola");
 });
 
 let refreshTokens = [];
 
-server.post("/token", (req, res) => {
+app.post("/token", (req, res) => {
   const refreshToken = req.body.token;
   if (refreshToken == null) return res.sendStatus(401);
   if (!refreshTokens.includes(refreshToken)) return res.sendStatus(403);
@@ -29,7 +29,7 @@ server.post("/token", (req, res) => {
   });
 });
 
-server.delete("/logout", (req, res) => {
+app.delete("/logout", (req, res) => {
   const refreshToken = req.body.token;
   if (!refreshToken) return res.sendStatus(400);
   refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
@@ -41,14 +41,43 @@ function generateAccessToken(user) {
   return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "15m" }); // Tiempo de vida del token de acceso: 15 minutos
 }
 
-server.post("/login", (req, res) => {
-  const username = req.body.username;
-  const user = { name: username };
+const listUserAdmin = [
+  { email: "admin@admin.com", password: bcrypt.hashSync("admin", saltRounds) },
+];
 
-  const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
-  const refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET);
-  refreshToken.push(refreshToken);
-  res.json({ accessToken: accessToken, refreshToken: refreshToken });
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  const user = listUserAdmin.find((user) => user.email === email);
+
+  if (!user) {
+    return res
+      .status(401)
+      .json({ message: "Correo electrónico o contraseña incorrectos" });
+  }
+
+  try {
+    if (await bcrypt.compare(password, user.password)) {
+      const accessToken = generateAccessToken({ email: user.email });
+      const refreshToken = jwt.sign(
+        { email: user.email },
+        process.env.REFRESH_TOKEN_SECRET
+      );
+      refreshTokens.push(refreshToken);
+      res.cookie("session", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      }); // Cookie de sesión con tiempo de vida de una semana
+      res.json({ accessToken: accessToken, refreshToken: refreshToken });
+    } else {
+      res
+        .status(401)
+        .json({ message: "Correo electrónico o contraseña incorrectos" });
+    }
+  } catch (error) {
+    console.error("Error al comparar contraseñas:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
 });
 
-server.listen(4000);
+app.listen(4000);

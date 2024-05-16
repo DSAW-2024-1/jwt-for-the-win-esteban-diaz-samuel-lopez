@@ -2,18 +2,8 @@ require("dotenv").config();
 
 const express = require("express");
 const app = express();
-const bcrypt = require("bcrypt");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const morgan = require("morgan");
-
-app.use(express.json());
-app.use(cors());
-app.use(morgan("dev"));
-
-app.get("/", (req, res) => {
-  res.send("Hola");
-});
 
 const listUsers = [
   {
@@ -22,15 +12,44 @@ const listUsers = [
     email: "john.doe@example.com",
     dateOfBirth: "1990-05-15",
   },
+  {
+    username: "Pepito",
+    lastName: "perez",
+    email: "admin@admin.com",
+    dateOfBirth: "2005-08-07",
+  },
 ];
 
-const listUserAdmin = [
-  { email: "admin@admin.com", password: "hashed_password" },
-];
+app.use(express.json());
+app.use(cors());
 
-module.exports = { listUserAdmin };
+app.get("/", (req, res) => {
+  res.send("Hola");
+});
 
 
+
+app.get("/profile", authenticateToken, (req, res) => {
+  const userEmail = req.user.email;
+  const user = listUsers.find((user) => user.email === userEmail);
+
+  if (!user) {
+    return res.status(404).json({ message: "Usuario no encontrado" });
+  }
+
+  res.json({
+    username: user.username,
+    lastName: user.lastName,
+    email: user.email,
+    dateOfBirth: user.dateOfBirth,
+  });
+});
+
+
+app.post("/form", authenticateToken, (req, res) => {
+  const text = req.body.text;
+  res.json({ text: text });
+});
 
 app.get("/contacts", authenticateToken, (req, res) => {
   res.json(listUsers);
@@ -48,4 +67,4 @@ function authenticateToken(req, res, next) {
   });
 }
 
-app.listen(3000);
+app.listen(8080);
